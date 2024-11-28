@@ -2,7 +2,7 @@ import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
 
-def create_portfolio(stock_data, index_data ,k):
+def create_portfolio(stock_data, index_data, k):
     I = np.array(stock_data.columns)  # Conjunto de ativos disponíveis
     T = range(len(stock_data))  # Número de períodos
     r = {(t, i): stock_data.iloc[t][i] for t in T for i in I} # Retornos individuais dos ativos
