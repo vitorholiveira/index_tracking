@@ -23,11 +23,11 @@ def build_dataset(index_ticker, stock_tickers, start_date, end_date, max_missing
     print(f"Stock returns saved to {returns_filename}")
 
     # Generate shares outstanding and calculate weights
-    shares_df = generate_shares_outstanding(stock_tickers)
-    weights = calculate_weights(data, shares_df, index_ticker)
-    weights_filename = f"stock_weights_{index_ticker}_{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}.csv"
-    weights.to_csv(weights_filename)
-    print(f"Stock weights saved to {weights_filename}")
+    #shares_df = generate_shares_outstanding(stock_tickers)
+    #weights = calculate_weights(data, shares_df, index_ticker)
+    #weights_filename = f"stock_weights_{index_ticker}_{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}.csv"
+    #weights.to_csv(weights_filename)
+    #print(f"Stock weights saved to {weights_filename}")
 
     return data, returns
 
@@ -140,8 +140,7 @@ def calculate_weights(data, shares_df, index_ticker):
     :return: DataFrame with weights for each stock
     """
     # Remove o índice do cálculo (se presente no DataFrame)
-    if index_ticker in data.columns:
-        data = data.drop(columns=[index_ticker])
+    data = data.drop(columns=[index_ticker])
     
     # Define o index do DataFrame de ações para alinhar com os preços
     shares_df = shares_df.set_index('Ticker')
