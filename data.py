@@ -14,12 +14,12 @@ def build_dataset(index_ticker, stock_tickers, start_date, end_date, max_missing
     """
     data = download_data(index_ticker, stock_tickers, start_date, end_date)
     data = clean_data(data, max_missing_days)
-    data = calculate_returns(data)
-    csv_filename = f"returns_{index_ticker}_and_{start_date.strftime('%m-%d-%Y')}_{end_date.strftime('%m-%d-%Y')}_years.csv"
+    returns = calculate_returns(data)
+    csv_filename = f"returns_{index_ticker}_and_{start_date}_{end_date}_years.csv"
 
     data.to_csv(csv_filename)
     print(f"Data saved to {csv_filename}")
-    return data
+    return data, returns
 
 def download_data(index_ticker, stock_tickers, start_date, end_date):
     """
