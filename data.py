@@ -12,13 +12,23 @@ def build_dataset(index_ticker, stock_tickers, start_date, end_date, max_missing
     :param max_missing_days: Maximum allowed consecutive days of missing data per stock
     :return: DataFrame with historical stock data and returns
     """
+    # Download data
     data = download_data(index_ticker, stock_tickers, start_date, end_date)
     data = clean_data(data, max_missing_days)
-    returns = calculate_returns(data)
-    csv_filename = f"returns_{index_ticker}_and_{start_date}_{end_date}_years.csv"
 
-    data.to_csv(csv_filename)
-    print(f"Data saved to {csv_filename}")
+    # Calculate returns and save
+    returns = calculate_returns(data)
+    returns_filename = f"stock_returns_{index_ticker}_{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}.csv"
+    returns.to_csv(returns_filename)
+    print(f"Stock returns saved to {returns_filename}")
+
+    # Generate shares outstanding and calculate weights
+    shares_df = generate_shares_outstanding(stock_tickers)
+    weights = calculate_weights(data, shares_df, index_ticker)
+    weights_filename = f"stock_weights_{index_ticker}_{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}.csv"
+    weights.to_csv(weights_filename)
+    print(f"Stock weights saved to {weights_filename}")
+
     return data, returns
 
 def download_data(index_ticker, stock_tickers, start_date, end_date):
@@ -103,3 +113,47 @@ def calculate_returns(data):
     except Exception as e:
         print(f"An error occurred in calculate returns: {e}")
         return None
+    
+def generate_shares_outstanding(stock_tickers):
+    """
+    Generates a DataFrame containing the shares outstanding for a list of stock tickers.
+
+    :param stock_tickers: List of stock tickers
+    :return: DataFrame containing Ticker and Shares Outstanding
+    """
+    data = [
+        {'Ticker': ticker, 'Shares Outstanding': yf.Ticker(ticker).info.get('sharesOutstanding')}
+        for ticker in stock_tickers
+        if yf.Ticker(ticker).info.get('sharesOutstanding') is not None
+    ]
+    
+    # Cria um DataFrame diretamente a partir da lista
+    return pd.DataFrame(data)
+
+def calculate_weights(data, shares_df, index_ticker):
+    """
+    Calculates the weights of each stock in the index based on market capitalization.
+
+    :param data: DataFrame with adjusted close prices
+    :param shares_df: DataFrame containing shares outstanding for the stock tickers
+    :param index_ticker: Ticker symbol of the index (to exclude it from the calculation)
+    :return: DataFrame with weights for each stock
+    """
+    # Remove o índice do cálculo (se presente no DataFrame)
+    if index_ticker in data.columns:
+        data = data.drop(columns=[index_ticker])
+    
+    # Define o index do DataFrame de ações para alinhar com os preços
+    shares_df = shares_df.set_index('Ticker')
+
+    # Obtém os preços mais recentes
+    latest_prices = data.iloc[-1]
+
+    # Calcula a capitalização de mercado
+    market_caps = latest_prices * shares_df['Shares Outstanding']
+
+    # Calcula os pesos (capitalização de mercado individual / total)
+    weights = market_caps / market_caps.sum()
+
+    # Retorna os pesos em um DataFrame
+    return pd.DataFrame(weights, columns=['Weight'])
