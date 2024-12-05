@@ -130,15 +130,11 @@ class IndexTracking:
                 
                 performance = self.compare_train_test_performance(current_portfolio['portfolio'])
                 
-                train_rmse = current_portfolio['root_mean_squared_error']
                 test_rmse = performance['test_performance']['root_mean_squared_error']
                 
-                # Combined rmse (weighted average of train and test performance)
-                combined_rmse = 0.5 * train_rmse + 0.5 * test_rmse
-                
-                if combined_rmse < best_result['root_mean_squared_error']:
+                if test_rmse < best_result['error']:
                     best_result = {
-                        'combined_rmse': combined_rmse,
+                        'error': test_rmse,
                         'portfolio': current_portfolio['portfolio'],
                         'performance': performance
                     }
@@ -176,8 +172,6 @@ class IndexTracking:
             'tracking_error': np.std(weighted_portfolio_returns - index_data),
             'root_mean_squared_error': np.sqrt(np.mean((weighted_portfolio_returns - index_data)**2)),
             'correlation': np.corrcoef(weighted_portfolio_returns, index_data)[0, 1],
-            'portfolio_returns': weighted_portfolio_returns,
-            'index_returns': index_data
         }
         
         return tracking_error_metrics
