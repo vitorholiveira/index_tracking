@@ -4,23 +4,27 @@ import yfinance as yf
 
 def build_dataset(index_ticker, stock_tickers, start_date, end_date, max_missing_days=30):
     """
-    Builds a dataset by downloading, cleaning, and calculating returns for a list of stock tickers.
+    Builds a dataset by downloading, cleaning, and calculating variance for a list of stock tickers.
 
     :param index_ticker: Ticker symbol for the index to include in the dataset
     :param start_date: Starting date for the historical data download
     :param end_date: Ending date for the historical data download
     :param max_missing_days: Maximum allowed consecutive days of missing data per stock
-    :return: DataFrame with historical stock data and returns
+    :return: DataFrame with historical stock data and variance
     """
     # Download data
-    data = download_data(index_ticker, stock_tickers, start_date, end_date)
-    data = clean_data(data, max_missing_days)
+    values = download_data(index_ticker, stock_tickers, start_date, end_date)
+    values = clean_data(values, max_missing_days)
 
-    # Calculate returns and save
-    returns = calculate_returns(data)
-    returns_filename = f"stock_returns_{index_ticker}_{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}.csv"
-    returns.to_csv(returns_filename)
-    print(f"Stock returns saved to {returns_filename}")
+    # Calculate variance and save
+    variance = calculate_variance(values)
+    variance_filename = f"stock_variance_{index_ticker}.csv"
+    variance.to_csv(variance_filename)
+    print(f"Stock variance saved to {variance_filename}")
+
+    values_filename = f"stock_values_{index_ticker}.csv"
+    values.to_csv(values_filename)
+    print(f"Stock values saved to {values_filename}")
 
     # Generate shares outstanding and calculate weights
     #shares_df = generate_shares_outstanding(stock_tickers)
@@ -29,7 +33,7 @@ def build_dataset(index_ticker, stock_tickers, start_date, end_date, max_missing
     #weights.to_csv(weights_filename)
     #print(f"Stock weights saved to {weights_filename}")
 
-    return data, returns
+    return values, variance
 
 def download_data(index_ticker, stock_tickers, start_date, end_date):
     """
@@ -45,6 +49,8 @@ def download_data(index_ticker, stock_tickers, start_date, end_date):
         all_tickers = [index_ticker] + stock_tickers
         data: pd.DataFrame = pd.DataFrame()
         data = yf.download(all_tickers, start=start_date, end=end_date)['Adj Close']
+        # Remove timezone information from the index (dates)
+        data.index = data.index.strftime('%Y-%m-%d')
         print("Data downloaded successfully.")
         return data
     except Exception as e:
@@ -97,21 +103,21 @@ def remove_stocks_with_prolonged_missing_data(data, days_limit=30):
         print(f"An error occurred o remove stocks with consecutive missing data: {e}")
         return None
 
-def calculate_returns(data):
+def calculate_variance(data):
     """
-    Calculates daily returns for the given stock data.
+    Calculates daily variance for the given stock data.
 
     :param data: DataFrame with cleaned stock price data
-    :return: DataFrame with daily returns for each stock
+    :return: DataFrame with daily variance for each stock
     """
     try:
-        # Calculate the daily returns by percentage change in stock prices
-        returns = data.pct_change()
-        returns = returns.iloc[1:, :]
+        # Calculate the daily variance by percentage change in stock prices
+        variance = data.pct_change()
+        variance = variance.iloc[1:, :]
 
-        return returns
+        return variance
     except Exception as e:
-        print(f"An error occurred in calculate returns: {e}")
+        print(f"An error occurred in calculate variance: {e}")
         return None
     
 def generate_shares_outstanding(stock_tickers):

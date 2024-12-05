@@ -26,6 +26,7 @@ class IndexTracking:
         self.train_index_data = None
         self.test_stock_data = None
         self.test_index_data = None
+        self.best_result = None
     
     def split_data(self, train_ratio=DEFAULT_TRAIN_RATIO):
         """
@@ -142,6 +143,8 @@ class IndexTracking:
             except gp.GurobiError as e:
                 print(f"Optimization error in iteration {start}: {e}")
                 continue
+        
+        self.best_result = best_result
         
         return best_result
     
