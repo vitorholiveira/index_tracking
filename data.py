@@ -156,3 +156,26 @@ def calculate_weights(data, shares_df, index_ticker):
 
     # Retorna os pesos em um DataFrame
     return pd.DataFrame(weights, columns=['Weight'])
+
+def split_by_dates(data, train_start, train_end, test_start, test_end):
+    """
+    Divide o dataset em conjuntos de treino e teste com base em datas definidas pelo usuário.
+
+    :param data: DataFrame com os dados (exemplo: retornos ou preços).
+    :param train_start: Data de início do conjunto de treino (string no formato 'YYYY-MM-DD').
+    :param train_end: Data de fim do conjunto de treino (string no formato 'YYYY-MM-DD').
+    :param test_start: Data de início do conjunto de teste (string no formato 'YYYY-MM-DD').
+    :param test_end: Data de fim do conjunto de teste (string no formato 'YYYY-MM-DD').
+    :return: Dois DataFrames: treino e teste.
+    """
+    # Filtra os dados para os períodos especificados
+    train_data = data.loc[train_start:train_end]
+    test_data = data.loc[test_start:test_end]
+
+    # Verifica se os períodos estão vazios
+    if train_data.empty:
+        raise ValueError("O período de treino está vazio. Verifique as datas fornecidas.")
+    if test_data.empty:
+        raise ValueError("O período de teste está vazio. Verifique as datas fornecidas.")
+    
+    return train_data, test_data
