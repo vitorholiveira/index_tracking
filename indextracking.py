@@ -27,6 +27,8 @@ class IndexTracking:
         self.test_index_data = None
         self.best_result = None
         self.results = None
+        self.best_result_is = None
+        self.results_is = None
     
     def split_data(self, train_start, train_end, test_start, test_end):
         """
@@ -48,7 +50,8 @@ class IndexTracking:
     
     def create_portfolio(self, 
                          portfolio_size=DEFAULT_PORTFOLIO_SIZE, 
-                         max_iterations=DEFAULT_MAX_ITERATIONS):
+                         max_iterations=DEFAULT_MAX_ITERATIONS,
+                         initial_solution=None):
         """
         Create an optimized portfolio that tracks the index
         
@@ -88,6 +91,11 @@ class IndexTracking:
         model.addConstr(gp.quicksum(z[i] for i in I) == k, "MaxStocks")
 
         model.setParam(GRB.Param.IterationLimit, max_iterations)
+
+        if(initial_solution):
+            model.setAttr("Start", w, initial_solution['w'])
+            model.setAttr("Start", z, initial_solution['z'])
+
         model.optimize()
 
         result = {
@@ -122,15 +130,23 @@ class IndexTracking:
             'performance': None
         }
 
+        best_result_is = {
+            'error': float('inf'),
+            'portfolio': None,
+            'performance': None
+        }
+
         results = []
+        results_is = []
         
         for start in range(num_starts):
             try:
+                # porfolio
                 current_portfolio = self.create_portfolio(
                     portfolio_size=portfolio_size, 
                     max_iterations=max_iterations
                 )
-                
+
                 performance = self.compare_train_test_performance(current_portfolio['portfolio'])
                 
                 test_rmse = performance['test_performance']['root_mean_squared_error']
@@ -145,13 +161,41 @@ class IndexTracking:
                                 
                 if test_rmse < best_result['error']:
                     best_result = new_result
+                
+                # portfolio with initial solution
+                w_initial, z_initial = self.generate_initial_solution(portfolio_size)
+                initial_solution = {'w': w_initial, 'z': z_initial}
+                current_portfolio_is = self.create_portfolio(
+                    portfolio_size=portfolio_size, 
+                    max_iterations=max_iterations,
+                    initial_solution=initial_solution
+                )
+
+                performance_is = self.compare_train_test_performance(current_portfolio['portfolio'])
+                
+                test_rmse_is = performance['test_performance']['root_mean_squared_error']
+
+                new_result_is = {
+                    'error': test_rmse_is,
+                    'portfolio': current_portfolio_is['portfolio'],
+                    'performance': performance_is
+                }
+
+                results_is.append(new_result_is)
+                                
+                if test_rmse_is < best_result_is['error']:
+                    best_result_is = new_result_is
+                
             
             except gp.GurobiError as e:
                 print(f"Optimization error in iteration {start}: {e}")
                 continue
         
         self.best_result = best_result
-        self.results = results
+        self.results = sorted(results, key=lambda x: x['error'])
+
+        self.best_result_is = best_result_is
+        self.results_is = sorted(results_is, key=lambda x: x['error'])
         
         return best_result, results
     
@@ -203,3 +247,59 @@ class IndexTracking:
             'train_performance': train_metrics,
             'test_performance': test_metrics
         }
+    
+    def generate_initial_solution(self, portfolio_size=DEFAULT_PORTFOLIO_SIZE):
+        """
+        Generate initial solution for the portfolio optimization problem.
+        
+        Parameters:
+        - stock_data: DataFrame with stock return data
+        - index_data: Array with index return data
+        - portfolio_size: Number of stocks to select (k)
+        
+        Returns:
+        - Tuple (w_initial, z_initial) where:
+        - w_initial: Dictionary with initial weights for stocks
+        - z_initial: Dictionary with initial binary selection for stocks
+        """
+
+        if self.train_stock_data is None:
+            print('Error')
+            return
+
+        stock_data = self.train_stock_data
+        index_data = self.train_index_data
+
+        I = np.array(stock_data.columns)
+        T = range(len(stock_data))
+        r = {(t, i): stock_data.iloc[t][i] for t in T for i in I}
+        R = np.array(index_data)
+        k = portfolio_size
+
+        relaxed_model = gp.Model("RelaxedPortfolio")
+        w_relaxed = relaxed_model.addVars(I, lb=0, ub=1, name="w")
+
+        relaxed_model.setObjective(
+            (1 / len(T)) * gp.quicksum(
+                (gp.quicksum(w_relaxed[i] * r[t, i] for i in I) - R[t]) ** 2 for t in T
+            ),
+            GRB.MINIMIZE
+        )
+
+        relaxed_model.addConstr(gp.quicksum(w_relaxed[i] for i in I) == 1, "WeightSum")
+        relaxed_model.optimize()
+
+        if relaxed_model.Status != GRB.OPTIMAL:
+            print("Relaxed model did not converge.")
+            return None, None
+
+        relaxed_weights = {i: w_relaxed[i].x for i in I}
+
+        top_k_stocks = sorted(relaxed_weights, key=relaxed_weights.get, reverse=True)[:k]
+
+        w_initial = {i: relaxed_weights[i] if i in top_k_stocks else 0 for i in I}
+        total_weight_top_k = sum(w_initial[i] for i in top_k_stocks)
+        w_initial = {i: (w_initial[i] / total_weight_top_k) if i in top_k_stocks else 0 for i in I}
+        z_initial = {i: 1 if i in top_k_stocks else 0 for i in I}
+
+        return w_initial, z_initial
