@@ -1,6 +1,7 @@
 import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
+import time
 
 class IndexTracking:
     # Portfolio Configuration Constants
@@ -25,10 +26,8 @@ class IndexTracking:
         self.train_index_data = None
         self.test_stock_data = None
         self.test_index_data = None
-        self.best_result = None
-        self.results = None
-        self.best_result_is = None
-        self.results_is = None
+        self.best_result = {'regular': None, 'initial_solution': None}
+        self.results = {'regular': None, 'initial_solution': None}
     
     def split_data(self, train_start, train_end, test_start, test_end):
         """
@@ -125,44 +124,42 @@ class IndexTracking:
             return
         
         best_result = {
-            'error': float('inf'),
-            'portfolio': None,
-            'performance': None
+            'regular': {
+                'error': float('inf'),
+                'portfolio': None,
+                'performance': None,
+                'optimization_time': float('inf')
+            },
+            'initial_solution':{
+                'error': float('inf'),
+                'portfolio': None,
+                'performance': None,
+                'optimization_time': float('inf')
+            }
         }
 
-        best_result_is = {
-            'error': float('inf'),
-            'portfolio': None,
-            'performance': None
-        }
-
-        results = []
-        results_is = []
+        results = {'regular': [], 'initial_solution': []}
         
-        for start in range(num_starts):
+        for i in range(num_starts):
             try:
                 # porfolio
+                start = time.time()
                 current_portfolio = self.create_portfolio(
                     portfolio_size=portfolio_size, 
                     max_iterations=max_iterations
                 )
-
+                end = time.time()
                 performance = self.compare_train_test_performance(current_portfolio['portfolio'])
-                
                 test_rmse = performance['test_performance']['root_mean_squared_error']
-
                 new_result = {
                     'error': test_rmse,
                     'portfolio': current_portfolio['portfolio'],
-                    'performance': performance
+                    'performance': performance,
+                    'optimization_time': end - start
                 }
-
-                results.append(new_result)
-                                
-                if test_rmse < best_result['error']:
-                    best_result = new_result
                 
                 # portfolio with initial solution
+                start_is = time.time()
                 w_initial, z_initial = self.generate_initial_solution(portfolio_size)
                 initial_solution = {'w': w_initial, 'z': z_initial}
                 current_portfolio_is = self.create_portfolio(
@@ -170,32 +167,34 @@ class IndexTracking:
                     max_iterations=max_iterations,
                     initial_solution=initial_solution
                 )
-
+                end_is = time.time()
                 performance_is = self.compare_train_test_performance(current_portfolio['portfolio'])
-                
                 test_rmse_is = performance['test_performance']['root_mean_squared_error']
-
                 new_result_is = {
                     'error': test_rmse_is,
                     'portfolio': current_portfolio_is['portfolio'],
-                    'performance': performance_is
+                    'performance': performance_is,
+                    'optimization_time': end_is - start_is
                 }
 
-                results_is.append(new_result_is)
-                                
-                if test_rmse_is < best_result_is['error']:
-                    best_result_is = new_result_is
+                # results
+                results['regular'].append(new_result)
+                results['initial_solution'].append(new_result_is)      
+                if test_rmse < best_result['regular']['error']:
+                    best_result['regular'] = new_result
+                if test_rmse_is < best_result['initial_solution']['error']:
+                    best_result['initial_solution'] = new_result_is
                 
             
             except gp.GurobiError as e:
-                print(f"Optimization error in iteration {start}: {e}")
+                print(f"Optimization error in iteration {i}: {e}")
                 continue
         
-        self.best_result = best_result
-        self.results = sorted(results, key=lambda x: x['error'])
+        results['regular'] = sorted(results['regular'], key=lambda x: x['error'])
+        results['initial_solution'] = sorted(results['regular'], key=lambda x: x['error'])
 
-        self.best_result_is = best_result_is
-        self.results_is = sorted(results_is, key=lambda x: x['error'])
+        self.best_result = best_result
+        self.results = results
         
         return best_result, results
     
