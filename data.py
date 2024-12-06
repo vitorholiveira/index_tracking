@@ -185,3 +185,16 @@ def split_by_dates(data, train_start, train_end, test_start, test_end):
         raise ValueError("O período de teste está vazio. Verifique as datas fornecidas.")
     
     return train_data, test_data
+
+
+def get_tickers(csv_file):
+    try:
+        # Ler o arquivo CSV
+        df = pd.read_csv(csv_file)
+        
+        symbols = df['Symbol'].tolist()
+        print(symbols)
+        return symbols
+    except Exception as e:
+        print(f"Erro ao processar o arquivo: {e}")
+        return []
