@@ -18,8 +18,7 @@ class IndexTracking:
         - index_data: Full array or Series with index returns
         """
         self.full_stock_data = stock_data
-        self.full_index_data = np.array(index_data)
-        self.available_stocks = np.array(stock_data.columns)
+        self.full_index_data = index_data
         
         # Default train-test split
         self.train_stock_data = None
@@ -27,21 +26,20 @@ class IndexTracking:
         self.test_stock_data = None
         self.test_index_data = None
         self.best_result = None
+        self.results = None
     
-    def split_data(self, train_ratio=DEFAULT_TRAIN_RATIO):
+    def split_data(self, train_start, train_end, test_start, test_end):
         """
         Split data into training and testing sets
         
         Parameters:
         - train_ratio: Proportion of data to use for training (default 70%)
         """
-        split_point = int(len(self.full_stock_data) * train_ratio)
-        
-        self.train_stock_data = self.full_stock_data.iloc[:split_point]
-        self.test_stock_data = self.full_stock_data.iloc[split_point:]
-        
-        self.train_index_data = self.full_index_data[:split_point]
-        self.test_index_data = self.full_index_data[split_point:]
+        self.train_stock_data = self.full_stock_data.loc[train_start:train_end]
+        self.test_stock_data = self.full_stock_data.loc[test_start:test_end]
+
+        self.train_index_data = self.full_index_data.loc[train_start:train_end]
+        self.test_index_data = self.full_index_data.loc[test_start:test_end]
         
         return {
             'train_periods': len(self.train_stock_data),
@@ -62,7 +60,8 @@ class IndexTracking:
         - Dictionary with portfolio weights and tracking error
         """
         if self.train_stock_data is None:
-            self.split_data()
+            print('Error')
+            return
 
         stock_data = self.train_stock_data
         index_data = self.train_index_data
@@ -114,13 +113,16 @@ class IndexTracking:
         - Best portfolio dictionary with performance metrics
         """
         if self.train_stock_data is None:
-            self.split_data()
+            print('Error')
+            return
         
         best_result = {
             'error': float('inf'),
             'portfolio': None,
             'performance': None
         }
+
+        results = []
         
         for start in range(num_starts):
             try:
@@ -132,21 +134,26 @@ class IndexTracking:
                 performance = self.compare_train_test_performance(current_portfolio['portfolio'])
                 
                 test_rmse = performance['test_performance']['root_mean_squared_error']
-                
+
+                new_result = {
+                    'error': test_rmse,
+                    'portfolio': current_portfolio['portfolio'],
+                    'performance': performance
+                }
+
+                results.append(new_result)
+                                
                 if test_rmse < best_result['error']:
-                    best_result = {
-                        'error': test_rmse,
-                        'portfolio': current_portfolio['portfolio'],
-                        'performance': performance
-                    }
+                    best_result = new_result
             
             except gp.GurobiError as e:
                 print(f"Optimization error in iteration {start}: {e}")
                 continue
         
         self.best_result = best_result
+        self.results = results
         
-        return best_result
+        return best_result, results
     
     def calculate_tracking_error(self, portfolio_weights, is_train=True):
         """
