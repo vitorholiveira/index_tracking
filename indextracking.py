@@ -18,16 +18,41 @@ class IndexTracking:
         - stock_data: Full DataFrame with stock returns
         - index_data: Full array or Series with index returns
         """
-        self.full_stock_data = stock_data
-        self.full_index_data = index_data
+        self.full_data = {
+            'stock': stock_data,
+            'index': index_data,
+        }
         
         # Default train-test split
-        self.train_stock_data = None
-        self.train_index_data = None
-        self.test_stock_data = None
-        self.test_index_data = None
-        self.best_result = {'regular': None, 'initial_solution': None}
-        self.results = {'regular': None, 'initial_solution': None}
+        self.data = {
+            'train': {
+                'stock': None,
+                'index': None,
+            },
+            'test': {
+                'stock': None,
+                'index': None,
+            }
+        }
+
+        self.dates = {
+            'train': {
+                'start': None,
+                'end': None
+            },
+            'test': {
+                'start': None,
+                'end': None
+            }
+        }
+
+        self.portfolio = {
+            'error': None,
+            'weights': None,
+            'performance': None,
+            'dates': self.dates,
+            'optimization_time': None
+        }
     
     def split_data(self, train_start, train_end, test_start, test_end):
         """
@@ -36,21 +61,22 @@ class IndexTracking:
         Parameters:
         - train_ratio: Proportion of data to use for training (default 70%)
         """
-        self.train_stock_data = self.full_stock_data.loc[train_start:train_end]
-        self.test_stock_data = self.full_stock_data.loc[test_start:test_end]
+        self.data['train']['stock'] = self.full_data['stock'].loc[train_start:train_end]
+        self.data['test']['stock'] = self.full_data['stock'].loc[test_start:test_end]
 
-        self.train_index_data = self.full_index_data.loc[train_start:train_end]
-        self.test_index_data = self.full_index_data.loc[test_start:test_end]
-        
-        return {
-            'train_periods': len(self.train_stock_data),
-            'test_periods': len(self.test_stock_data)
-        }
+        self.data['train']['index'] = self.full_data['index'].loc[train_start:train_end]
+        self.data['test']['index'] = self.full_data['index'].loc[test_start:test_end]
+
+        self.dates['train']['start'] = train_start
+        self.dates['train']['end'] = train_end
+
+        self.dates['test']['start'] = test_start
+        self.dates['test']['end'] = test_end
     
     def create_portfolio(self, 
                          portfolio_size=DEFAULT_PORTFOLIO_SIZE, 
                          max_iterations=DEFAULT_MAX_ITERATIONS,
-                         initial_solution=None):
+                         initial_solution=False):
         """
         Create an optimized portfolio that tracks the index
         
@@ -61,12 +87,12 @@ class IndexTracking:
         Returns:
         - Dictionary with portfolio weights and tracking error
         """
-        if self.train_stock_data is None:
+        if self.data['train']['stock'] is None:
             print('Error')
             return
 
-        stock_data = self.train_stock_data
-        index_data = self.train_index_data
+        stock_data = self.data['train']['stock']
+        index_data = self.data['train']['index']
 
         I = np.array(stock_data.columns)
         T = range(len(stock_data))
@@ -91,112 +117,33 @@ class IndexTracking:
 
         model.setParam(GRB.Param.IterationLimit, max_iterations)
 
+        start = time.time()
+
         if(initial_solution):
-            model.setAttr("Start", w, initial_solution['w'])
-            model.setAttr("Start", z, initial_solution['z'])
+            w_initial, z_initial = self.generate_initial_solution(portfolio_size)
+            model.setAttr("Start", w, w_initial)
+            model.setAttr("Start", z, z_initial)
 
         model.optimize()
 
-        result = {
-            'root_mean_squared_error': model.ObjVal,
-            'portfolio': {i: w[i].x for i in I if z[i].x}
-        }
-        
-        return result
-    
-    def mult_start_optimization(self, 
-                                portfolio_size=DEFAULT_PORTFOLIO_SIZE, 
-                                num_starts=DEFAULT_MULTI_START_ITERATIONS, 
-                                max_iterations=DEFAULT_MAX_ITERATIONS):
-        """
-        Perform multi-start optimization to find the best portfolio across train and test data
-        
-        Parameters:
-        - portfolio_size: Number of stocks to select
-        - num_starts: Number of different starting points
-        - max_iterations: Maximum iterations per run
-        
-        Returns:
-        - Best portfolio dictionary with performance metrics
-        """
-        if self.train_stock_data is None:
-            print('Error')
-            return
-        
-        best_result = {
-            'regular': {
-                'error': float('inf'),
-                'portfolio': None,
-                'performance': None,
-                'optimization_time': float('inf')
-            },
-            'initial_solution':{
-                'error': float('inf'),
-                'portfolio': None,
-                'performance': None,
-                'optimization_time': float('inf')
-            }
+        end = time.time()
+
+        error = model.ObjVal
+        weights = {i: w[i].x for i in I if z[i].x}
+        performance = self.compare_train_test_performance(weights)
+        optimization_time = end - start;
+
+        portfolio = {
+            'error': error,
+            'weights': weights,
+            'performance': performance,
+            'dates': self.dates,
+            'optimization_time': optimization_time
         }
 
-        results = {'regular': [], 'initial_solution': []}
+        self.portfolio = portfolio
         
-        for i in range(num_starts):
-            try:
-                # porfolio
-                start = time.time()
-                current_portfolio = self.create_portfolio(
-                    portfolio_size=portfolio_size, 
-                    max_iterations=max_iterations
-                )
-                end = time.time()
-                performance = self.compare_train_test_performance(current_portfolio['portfolio'])
-                test_rmse = performance['test_performance']['root_mean_squared_error']
-                new_result = {
-                    'error': test_rmse,
-                    'portfolio': current_portfolio['portfolio'],
-                    'performance': performance,
-                    'optimization_time': end - start
-                }
-                
-                # portfolio with initial solution
-                start_is = time.time()
-                w_initial, z_initial = self.generate_initial_solution(portfolio_size)
-                initial_solution = {'w': w_initial, 'z': z_initial}
-                current_portfolio_is = self.create_portfolio(
-                    portfolio_size=portfolio_size, 
-                    max_iterations=max_iterations,
-                    initial_solution=initial_solution
-                )
-                end_is = time.time()
-                performance_is = self.compare_train_test_performance(current_portfolio['portfolio'])
-                test_rmse_is = performance['test_performance']['root_mean_squared_error']
-                new_result_is = {
-                    'error': test_rmse_is,
-                    'portfolio': current_portfolio_is['portfolio'],
-                    'performance': performance_is,
-                    'optimization_time': end_is - start_is
-                }
-
-                # results
-                results['regular'].append(new_result)
-                results['initial_solution'].append(new_result_is)      
-                if test_rmse < best_result['regular']['error']:
-                    best_result['regular'] = new_result
-                if test_rmse_is < best_result['initial_solution']['error']:
-                    best_result['initial_solution'] = new_result_is
-                
-            
-            except gp.GurobiError as e:
-                print(f"Optimization error in iteration {i}: {e}")
-                continue
-        
-        results['regular'] = sorted(results['regular'], key=lambda x: x['error'])
-        results['initial_solution'] = sorted(results['regular'], key=lambda x: x['error'])
-
-        self.best_result = best_result
-        self.results = results
-        
-        return best_result, results
+        return portfolio
     
     def calculate_tracking_error(self, portfolio_weights, is_train=True):
         """
@@ -210,11 +157,11 @@ class IndexTracking:
         - Dictionary of tracking error metrics
         """
         if is_train:
-            stock_data = self.train_stock_data
-            index_data = self.train_index_data
+            stock_data = self.data['train']['stock']
+            index_data = self.data['train']['index']
         else:
-            stock_data = self.test_stock_data
-            index_data = self.test_index_data
+            stock_data = self.data['test']['stock']
+            index_data = self.data['test']['index']
         
         selected_stocks = list(portfolio_weights.keys())
         selected_stock_returns = stock_data[selected_stocks]
@@ -262,12 +209,12 @@ class IndexTracking:
         - z_initial: Dictionary with initial binary selection for stocks
         """
 
-        if self.train_stock_data is None:
+        if self.data['train']['stock'] is None:
             print('Error')
             return
 
-        stock_data = self.train_stock_data
-        index_data = self.train_index_data
+        stock_data = self.data['train']['stock']
+        index_data = self.data['train']['index']
 
         I = np.array(stock_data.columns)
         T = range(len(stock_data))

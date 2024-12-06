@@ -1,4 +1,4 @@
-from data import build_dataset, get_tickers
+from dataset import build_dataset, get_tickers
 
 bvsp_index_ticker = '^BVSP'
 bvsp_stock_tickers = get_tickers('tickers_^BVSP.csv')

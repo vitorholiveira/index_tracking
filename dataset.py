@@ -21,20 +21,13 @@ def build_dataset(index_ticker, stock_tickers, start_date, end_date, max_missing
 
     # Calculate variance and save
     variance = calculate_variance(values)
-    variance_filename = f"stock_variance_{index_ticker}.csv"
+    variance_filename = f"./data/stock_variance_{index_ticker}.csv"
     variance.to_csv(variance_filename)
     print(f"Stock variance saved to {variance_filename}")
 
-    values_filename = f"stock_values_{index_ticker}.csv"
+    values_filename = f"./data/stock_values_{index_ticker}.csv"
     values.to_csv(values_filename)
     print(f"Stock values saved to {values_filename}")
-
-    # Generate shares outstanding and calculate weights
-    #shares_df = generate_shares_outstanding(stock_tickers)
-    #weights = calculate_weights(data, shares_df, index_ticker)
-    #weights_filename = f"stock_weights_{index_ticker}_{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}.csv"
-    #weights.to_csv(weights_filename)
-    #print(f"Stock weights saved to {weights_filename}")
 
     return values, variance
 
