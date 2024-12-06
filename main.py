@@ -40,8 +40,8 @@ def treinacao(index_ticker, portfolio_size=10, max_iterations=1000000, initial_s
     start_date_dataset = "2023-01-01"
     end_date_dataset = "2024-01-01"
     train_start = start_date_dataset
-    train_end = "2023-06-01"
-    test_start = "2023-06-02"
+    train_end = "2023-03-01"
+    test_start = "2023-03-02"
     test_end = end_date_dataset
 
     model = IndexTracking(stock_data=stock_data, index_data=index_data)
