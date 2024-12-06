@@ -6,11 +6,14 @@ def build_dataset(index_ticker, stock_tickers, start_date, end_date, max_missing
     """
     Builds a dataset by downloading, cleaning, and calculating variance for a list of stock tickers.
 
-    :param index_ticker: Ticker symbol for the index to include in the dataset
-    :param start_date: Starting date for the historical data download
-    :param end_date: Ending date for the historical data download
-    :param max_missing_days: Maximum allowed consecutive days of missing data per stock
-    :return: DataFrame with historical stock data and variance
+    Parameters:
+    - index_ticker: Ticker symbol for the index to include in the dataset
+    - start_date: Starting date for the historical data download
+    - end_date: Ending date for the historical data download
+    - max_missing_days: Maximum allowed consecutive days of missing data per stock
+    
+    Returns:
+    - DataFrame with historical stock data and variance
     """
     # Download data
     values = download_data(index_ticker, stock_tickers, start_date, end_date)
@@ -135,56 +138,6 @@ def generate_shares_outstanding(stock_tickers):
     
     # Cria um DataFrame diretamente a partir da lista
     return pd.DataFrame(data)
-
-def calculate_weights(data, shares_df, index_ticker):
-    """
-    Calculates the weights of each stock in the index based on market capitalization.
-
-    :param data: DataFrame with adjusted close prices
-    :param shares_df: DataFrame containing shares outstanding for the stock tickers
-    :param index_ticker: Ticker symbol of the index (to exclude it from the calculation)
-    :return: DataFrame with weights for each stock
-    """
-    # Remove o índice do cálculo (se presente no DataFrame)
-    data = data.drop(columns=[index_ticker])
-    
-    # Define o index do DataFrame de ações para alinhar com os preços
-    shares_df = shares_df.set_index('Ticker')
-
-    # Obtém os preços mais recentes
-    latest_prices = data.iloc[-1]
-
-    # Calcula a capitalização de mercado
-    market_caps = latest_prices * shares_df['Shares Outstanding']
-
-    # Calcula os pesos (capitalização de mercado individual / total)
-    weights = market_caps / market_caps.sum()
-
-    # Retorna os pesos em um DataFrame
-    return pd.DataFrame(weights, columns=['Weight'])
-
-def split_by_dates(data, train_start, train_end, test_start, test_end):
-    """
-    Divide o dataset em conjuntos de treino e teste com base em datas definidas pelo usuário.
-
-    :param data: DataFrame com os dados (exemplo: retornos ou preços).
-    :param train_start: Data de início do conjunto de treino (string no formato 'YYYY-MM-DD').
-    :param train_end: Data de fim do conjunto de treino (string no formato 'YYYY-MM-DD').
-    :param test_start: Data de início do conjunto de teste (string no formato 'YYYY-MM-DD').
-    :param test_end: Data de fim do conjunto de teste (string no formato 'YYYY-MM-DD').
-    :return: Dois DataFrames: treino e teste.
-    """
-    # Filtra os dados para os períodos especificados
-    train_data = data.loc[train_start:train_end]
-    test_data = data.loc[test_start:test_end]
-
-    # Verifica se os períodos estão vazios
-    if train_data.empty:
-        raise ValueError("O período de treino está vazio. Verifique as datas fornecidas.")
-    if test_data.empty:
-        raise ValueError("O período de teste está vazio. Verifique as datas fornecidas.")
-    
-    return train_data, test_data
 
 
 def get_tickers(csv_file):
