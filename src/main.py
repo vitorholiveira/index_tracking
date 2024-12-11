@@ -26,11 +26,11 @@ def save_portfolio(result, filename):
 
 def train(index_ticker, portfolio_size=10, max_iterations=1000000, initial_solution=False):
     if(index_ticker=='^BVSP'):
-        data = pd.read_csv('./data/stock_variance_^BVSP.csv', index_col=0)
+        data = pd.read_csv('../data/stock_variance_^BVSP.csv', index_col=0)
         index_data = data[index_ticker]
         stock_data = data.drop(columns=[index_ticker])
     elif(index_ticker=='^OEX'):
-        data = pd.read_csv('./data/stock_variance_^OEX.csv', index_col=0)
+        data = pd.read_csv('../data/stock_variance_^OEX.csv', index_col=0)
         index_data = data[index_ticker]
         stock_data = data.drop(columns=[index_ticker])
     else:
@@ -49,17 +49,17 @@ def train(index_ticker, portfolio_size=10, max_iterations=1000000, initial_solut
     portfolio = model.create_portfolio(portfolio_size=portfolio_size, max_iterations=max_iterations, initial_solution=initial_solution)
 
     if(initial_solution):
-        filename = f'./portfolios/initial_{index_ticker}_{portfolio_size}stocks.csv'
+        filename = f'../portfolios/initial_{index_ticker}_{portfolio_size}stocks.csv'
     else:
-        filename = f'./portfolios/regular_{index_ticker}_{portfolio_size}stocks.csv'
+        filename = f'../portfolios/regular_{index_ticker}_{portfolio_size}stocks.csv'
 
     save_portfolio(portfolio, filename=filename)
 
 
 def build_dataset_from_tickers(index_ticker):
-    if os.path.exists(f'./data/stock_cumulative_returns_{index_ticker}.csv') and os.path.exists(f'./data/stock_variance_{index_ticker}.csv'):
+    if os.path.exists(f'../data/stock_cumulative_returns_{index_ticker}.csv') and os.path.exists(f'../data/stock_variance_{index_ticker}.csv'):
         return
-    stock_tickers = get_tickers(f'./data/tickers_{index_ticker}.csv')
+    stock_tickers = get_tickers(f'../data/tickers_{index_ticker}.csv')
     start_date = "2023-01-01"
     end_date = "2024-01-01"
     build_dataset(index_ticker, stock_tickers, start_date, end_date)
@@ -68,7 +68,7 @@ def main():
     bvsp_index_ticker = '^BVSP'
     sp100_index_ticker = '^OEX'
 
-    max_iterations = 10**(3)
+    max_iterations = 10**(6)
 
     build_dataset_from_tickers(bvsp_index_ticker)
     build_dataset_from_tickers(sp100_index_ticker)
