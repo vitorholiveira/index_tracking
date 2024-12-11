@@ -24,7 +24,7 @@ def save_portfolio(result, filename):
     df = pd.DataFrame([data])
     df.to_csv(filename, index=False)
 
-def treinacao(index_ticker, portfolio_size=10, max_iterations=1000000, initial_solution=False):
+def train(index_ticker, portfolio_size=10, max_iterations=1000000, initial_solution=False):
     if(index_ticker=='^BVSP'):
         data = pd.read_csv('./data/stock_variance_^BVSP.csv', index_col=0)
         index_data = data[index_ticker]
@@ -57,7 +57,7 @@ def treinacao(index_ticker, portfolio_size=10, max_iterations=1000000, initial_s
 
 
 def build_dataset_from_tickers(index_ticker):
-    if os.path.exists(f'./data/stock_values_{index_ticker}.csv') and os.path.exists(f'./data/stock_variance_{index_ticker}.csv'):
+    if os.path.exists(f'./data/stock_cumulative_returns_{index_ticker}.csv') and os.path.exists(f'./data/stock_variance_{index_ticker}.csv'):
         return
     stock_tickers = get_tickers(f'./data/tickers_{index_ticker}.csv')
     start_date = "2023-01-01"
@@ -73,17 +73,17 @@ def main():
     build_dataset_from_tickers(bvsp_index_ticker)
     build_dataset_from_tickers(sp100_index_ticker)
 
-    treinacao(bvsp_index_ticker, portfolio_size=10, max_iterations=max_iterations)
-    treinacao(sp100_index_ticker, portfolio_size=10, max_iterations=max_iterations)
+    train(bvsp_index_ticker, portfolio_size=10, max_iterations=max_iterations)
+    train(sp100_index_ticker, portfolio_size=10, max_iterations=max_iterations)
 
-    treinacao(bvsp_index_ticker, portfolio_size=20, max_iterations=max_iterations)
-    treinacao(sp100_index_ticker, portfolio_size=20, max_iterations=max_iterations)
+    train(bvsp_index_ticker, portfolio_size=20, max_iterations=max_iterations)
+    train(sp100_index_ticker, portfolio_size=20, max_iterations=max_iterations)
 
-    treinacao(bvsp_index_ticker, portfolio_size=10, max_iterations=max_iterations, initial_solution=True)
-    treinacao(sp100_index_ticker, portfolio_size=10, max_iterations=max_iterations, initial_solution=True)
+    train(bvsp_index_ticker, portfolio_size=10, max_iterations=max_iterations, initial_solution=True)
+    train(sp100_index_ticker, portfolio_size=10, max_iterations=max_iterations, initial_solution=True)
 
-    treinacao(bvsp_index_ticker, portfolio_size=20, max_iterations=max_iterations, initial_solution=True)
-    treinacao(sp100_index_ticker, portfolio_size=20, max_iterations=max_iterations, initial_solution=True)
+    train(bvsp_index_ticker, portfolio_size=20, max_iterations=max_iterations, initial_solution=True)
+    train(sp100_index_ticker, portfolio_size=20, max_iterations=max_iterations, initial_solution=True)
 
 if __name__ == "__main__":
     main()
