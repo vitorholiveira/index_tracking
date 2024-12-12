@@ -8,6 +8,7 @@ class IndexTracking:
     DEFAULT_PORTFOLIO_SIZE = 15
     DEFAULT_TRAIN_RATIO = 0.7
     DEFAULT_MAX_ITERATIONS = 100000
+    DEFAULT_TIME_LIMIT = 30
     DEFAULT_MULTI_START_ITERATIONS = 10
 
     def __init__(self, stock_data, index_data):
@@ -57,9 +58,12 @@ class IndexTracking:
     def split_data(self, train_start, train_end, test_start, test_end):
         """
         Split data into training and testing sets
-        
+
         Parameters:
-        - train_ratio: Proportion of data to use for training (default 70%)
+        - train_start: Start date for the training data
+        - train_end: End date for the training data
+        - test_start: Start date for the testing data
+        - test_end: End date for the testing data
         """
         self.data['train']['stock'] = self.full_data['stock'].loc[train_start:train_end]
         self.data['test']['stock'] = self.full_data['stock'].loc[test_start:test_end]
@@ -75,7 +79,8 @@ class IndexTracking:
     
     def create_portfolio(self, 
                          portfolio_size=DEFAULT_PORTFOLIO_SIZE, 
-                         max_iterations=DEFAULT_MAX_ITERATIONS,
+                         max_iterations=None,
+                         time_limit=None,
                          initial_solution=False):
         """
         Create an optimized portfolio that tracks the index
@@ -83,7 +88,9 @@ class IndexTracking:
         Parameters:
         - portfolio_size: Number of stocks to select
         - max_iterations: Maximum Gurobi iterations
-        
+        - time_limit: Time limit for Gurobi
+        - initial_solution: Whether to use our initial solution to warm start the optimization
+
         Returns:
         - Dictionary with portfolio weights and tracking error
         """
@@ -115,7 +122,11 @@ class IndexTracking:
         model.addConstrs((w[i] <= z[i] for i in I), "WeightBinding")
         model.addConstr(gp.quicksum(z[i] for i in I) == k, "MaxStocks")
 
-        model.setParam(GRB.Param.IterationLimit, max_iterations)
+        if(max_iterations != None):
+            model.setParam(GRB.Param.IterationLimit, max_iterations)
+        
+        if(time_limit != None):
+            model.setParam(GRB.Param.TimeLimit, 60*time_limit)
 
         start = time.time()
 
@@ -199,14 +210,12 @@ class IndexTracking:
         Generate initial solution for the portfolio optimization problem.
         
         Parameters:
-        - stock_data: DataFrame with stock return data
-        - index_data: Array with index return data
         - portfolio_size: Number of stocks to select (k)
         
         Returns:
         - Tuple (w_initial, z_initial) where:
-        - w_initial: Dictionary with initial weights for stocks
-        - z_initial: Dictionary with initial binary selection for stocks
+            - w_initial: Dictionary with initial weights for stocks
+            - z_initial: Dictionary with initial binary selection for stocks
         """
 
         if self.data['train']['stock'] is None:
