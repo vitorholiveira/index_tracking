@@ -135,6 +135,8 @@ class IndexTracking:
             model.setAttr("Start", w, w_initial)
             model.setAttr("Start", z, z_initial)
 
+        model.setParam(GRB.Param.MIPGap, 0.01)  # Parar quando o gap for menor que 1%
+
         model.optimize()
 
         end = time.time()

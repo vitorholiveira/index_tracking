@@ -24,12 +24,52 @@ def save_portfolio(result, filename):
     df = pd.DataFrame([data])
     df.to_csv(filename, index=False)
 
-def train(index_ticker, portfolio_size=10, max_iterations=None, time_limit=None, initial_solution=False, rebalance=False):
+def build_dataset_from_tickers(index_ticker):
+    if os.path.exists(f'./data/stock_cumulative_returns_{index_ticker}.csv') and os.path.exists(f'./data/stock_variance_{index_ticker}.csv'):
+        return
+    stock_tickers = get_tickers(f'./data/tickers_{index_ticker}.csv')
+    start_date = "2023-01-01"
+    end_date = "2024-01-01"
+    build_dataset(index_ticker, stock_tickers, start_date, end_date)
+
+def train_to_define_k(index_ticker, portfolio_size):
     if(index_ticker=='^BVSP'):
+        ticker_name = 'bvsp'
         data = pd.read_csv('./data/stock_variance_^BVSP.csv', index_col=0)
         index_data = data[index_ticker]
         stock_data = data.drop(columns=[index_ticker])
     elif(index_ticker=='^OEX'):
+        ticker_name = 'sp100'
+        data = pd.read_csv('./data/stock_variance_^OEX.csv', index_col=0)
+        index_data = data[index_ticker]
+        stock_data = data.drop(columns=[index_ticker])
+    else:
+        print('ERROR')
+        return
+    
+    start_date_dataset = "2023-01-01"
+    end_date_dataset = "2023-12-31"
+    train_start = start_date_dataset
+    train_end = "2023-03-31"
+    test_start = "2023-04-01"
+    test_end = end_date_dataset
+
+    model = IndexTracking(stock_data=stock_data, index_data=index_data)
+    model.split_data(train_start=train_start, train_end=train_end, test_start=test_start, test_end=test_end)
+    portfolio = model.create_portfolio(portfolio_size=portfolio_size, initial_solution=True)
+
+    filename = f'./k_param/{ticker_name}_{portfolio_size}k.csv'
+
+    save_portfolio(portfolio, filename=filename)
+
+def train(index_ticker, portfolio_size=10, max_iterations=None, time_limit=None, initial_solution=False, rebalance=False):
+    if(index_ticker=='^BVSP'):
+        ticker_name = 'bvsp'
+        data = pd.read_csv('./data/stock_variance_^BVSP.csv', index_col=0)
+        index_data = data[index_ticker]
+        stock_data = data.drop(columns=[index_ticker])
+    elif(index_ticker=='^OEX'):
+        ticker_name = 'sp100'
         data = pd.read_csv('./data/stock_variance_^OEX.csv', index_col=0)
         index_data = data[index_ticker]
         stock_data = data.drop(columns=[index_ticker])
@@ -57,24 +97,15 @@ def train(index_ticker, portfolio_size=10, max_iterations=None, time_limit=None,
     portfolio = model.create_portfolio(portfolio_size=portfolio_size, max_iterations=max_iterations, time_limit=time_limit, initial_solution=initial_solution)
 
     if(initial_solution and not rebalance):
-        filename = f'./portfolios/initial_{index_ticker}_{portfolio_size}stocks.csv'
+        filename = f'./portfolios/initial_{ticker_name}_{portfolio_size}stocks.csv'
     elif(not initial_solution and not rebalance):
-        filename = f'./portfolios/regular_{index_ticker}_{portfolio_size}stocks.csv'
+        filename = f'./portfolios/regular_{ticker_name}_{portfolio_size}stocks.csv'
     elif(initial_solution and rebalance):
-        filename = f'./portfolios/initial_rebalance_{index_ticker}_{portfolio_size}stocks.csv'
+        filename = f'./portfolios/initial_rebalance_{ticker_name}_{portfolio_size}stocks.csv'
     elif(not initial_solution and rebalance):
-        filename = f'./portfolios/initial_rebalance_{index_ticker}_{portfolio_size}stocks.csv'
+        filename = f'./portfolios/initial_rebalance_{ticker_name}_{portfolio_size}stocks.csv'
 
     save_portfolio(portfolio, filename=filename)
-
-
-def build_dataset_from_tickers(index_ticker):
-    if os.path.exists(f'./data/stock_cumulative_returns_{index_ticker}.csv') and os.path.exists(f'./data/stock_variance_{index_ticker}.csv'):
-        return
-    stock_tickers = get_tickers(f'./data/tickers_{index_ticker}.csv')
-    start_date = "2023-01-01"
-    end_date = "2024-01-01"
-    build_dataset(index_ticker, stock_tickers, start_date, end_date)
 
 def main():
     bvsp_index_ticker = '^BVSP'
@@ -86,29 +117,46 @@ def main():
     build_dataset_from_tickers(bvsp_index_ticker)
     build_dataset_from_tickers(sp100_index_ticker)
 
-    train(bvsp_index_ticker, portfolio_size=10, time_limit=time_limit)
-    train(sp100_index_ticker, portfolio_size=10, time_limit=time_limit)
+    # train(bvsp_index_ticker, portfolio_size=10)
+    # train(sp100_index_ticker, portfolio_size=10)
 
-    train(bvsp_index_ticker, portfolio_size=20, time_limit=time_limit)
-    train(sp100_index_ticker, portfolio_size=20, time_limit=time_limit)
+    # train(bvsp_index_ticker, portfolio_size=20)
+    # train(sp100_index_ticker, portfolio_size=20)
 
-    train(bvsp_index_ticker, portfolio_size=10, time_limit=time_limit, initial_solution=True)
-    train(sp100_index_ticker, portfolio_size=10, time_limit=time_limit, initial_solution=True)
+    # train(bvsp_index_ticker, portfolio_size=10, initial_solution=True)
+    # train(sp100_index_ticker, portfolio_size=10, initial_solution=True)
 
-    train(bvsp_index_ticker, portfolio_size=20, time_limit=time_limit, initial_solution=True)
-    train(sp100_index_ticker, portfolio_size=20, time_limit=time_limit, initial_solution=True)
+    # train(bvsp_index_ticker, portfolio_size=20, initial_solution=True)
+    # train(sp100_index_ticker, portfolio_size=20, initial_solution=True)
 
-    train(bvsp_index_ticker, portfolio_size=10, time_limit=time_limit, rebalance=True)
-    train(sp100_index_ticker, portfolio_size=10, time_limit=time_limit, rebalance=True)
+    # train(bvsp_index_ticker, portfolio_size=10, rebalance=True)
+    # train(sp100_index_ticker, portfolio_size=10, rebalance=True)
 
-    train(bvsp_index_ticker, portfolio_size=20, time_limit=time_limit, rebalance=True)
-    train(sp100_index_ticker, portfolio_size=20, time_limit=time_limit, rebalance=True)
+    # train(bvsp_index_ticker, portfolio_size=20, rebalance=True)
+    # train(sp100_index_ticker, portfolio_size=20, rebalance=True)
 
-    train(bvsp_index_ticker, portfolio_size=10, time_limit=time_limit, initial_solution=True, rebalance=True)
-    train(sp100_index_ticker, portfolio_size=10, time_limit=time_limit, initial_solution=True, rebalance=True)
+    # train(bvsp_index_ticker, portfolio_size=10, initial_solution=True, rebalance=True)
+    # train(sp100_index_ticker, portfolio_size=10, initial_solution=True, rebalance=True)
 
-    train(bvsp_index_ticker, portfolio_size=20, time_limit=time_limit, initial_solution=True, rebalance=True)
-    train(sp100_index_ticker, portfolio_size=20, time_limit=time_limit, initial_solution=True, rebalance=True)
+    # train(bvsp_index_ticker, portfolio_size=20, initial_solution=True, rebalance=True)
+    # train(sp100_index_ticker, portfolio_size=20, initial_solution=True, rebalance=True)
+
+    train_to_define_k(bvsp_index_ticker, 5)
+    train_to_define_k(bvsp_index_ticker, 10)
+    train_to_define_k(bvsp_index_ticker, 15)
+    train_to_define_k(bvsp_index_ticker, 20)
+    train_to_define_k(bvsp_index_ticker, 25)
+    train_to_define_k(bvsp_index_ticker, 30)
+    train_to_define_k(bvsp_index_ticker, 35)
+
+    train_to_define_k(sp100_index_ticker, 5)
+    train_to_define_k(sp100_index_ticker, 10)
+    train_to_define_k(sp100_index_ticker, 15)
+    train_to_define_k(sp100_index_ticker, 20)
+    train_to_define_k(sp100_index_ticker, 25)
+    train_to_define_k(sp100_index_ticker, 30)
+    train_to_define_k(sp100_index_ticker, 35)
+
 
 if __name__ == "__main__":
     main()
