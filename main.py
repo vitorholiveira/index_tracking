@@ -15,6 +15,7 @@ def save_portfolio(result, filename):
         'Test RMSE': result['performance']['test_performance']['root_mean_squared_error'],
         'Test Correlation': result['performance']['test_performance']['correlation'],
         'Optimization Time': result['optimization_time'],
+        'Mip Gap': result['mip_gap'],
         'Start train': result['dates']['train']['start'],
         'End train': result['dates']['train']['end'],
         'Start test': result['dates']['test']['start'],
@@ -47,6 +48,8 @@ def train_to_define_k(index_ticker, portfolio_size):
         print('ERROR')
         return
     
+    time_limit = 30
+
     start_date_dataset = "2023-01-01"
     end_date_dataset = "2023-12-31"
     train_start = start_date_dataset
@@ -56,9 +59,9 @@ def train_to_define_k(index_ticker, portfolio_size):
 
     model = IndexTracking(stock_data=stock_data, index_data=index_data)
     model.split_data(train_start=train_start, train_end=train_end, test_start=test_start, test_end=test_end)
-    portfolio = model.create_portfolio(portfolio_size=portfolio_size, initial_solution=True)
+    portfolio = model.create_portfolio(portfolio_size=portfolio_size, time_limit=time_limit, initial_solution=True)
 
-    filename = f'./k_param/{ticker_name}_{portfolio_size}k.csv'
+    filename = f'./portfolios/define_k/{ticker_name}_{portfolio_size}k.csv'
 
     save_portfolio(portfolio, filename=filename)
 
@@ -97,13 +100,13 @@ def train(index_ticker, portfolio_size=10, max_iterations=None, time_limit=None,
     portfolio = model.create_portfolio(portfolio_size=portfolio_size, max_iterations=max_iterations, time_limit=time_limit, initial_solution=initial_solution)
 
     if(initial_solution and not rebalance):
-        filename = f'./portfolios/initial_{ticker_name}_{portfolio_size}stocks.csv'
+        filename = f'./portfolios/results/initial_{ticker_name}_{portfolio_size}stocks.csv'
     elif(not initial_solution and not rebalance):
-        filename = f'./portfolios/regular_{ticker_name}_{portfolio_size}stocks.csv'
+        filename = f'./portfolios/results/regular_{ticker_name}_{portfolio_size}stocks.csv'
     elif(initial_solution and rebalance):
-        filename = f'./portfolios/initial_rebalance_{ticker_name}_{portfolio_size}stocks.csv'
+        filename = f'./portfolios/results/initial_rebalance_{ticker_name}_{portfolio_size}stocks.csv'
     elif(not initial_solution and rebalance):
-        filename = f'./portfolios/initial_rebalance_{ticker_name}_{portfolio_size}stocks.csv'
+        filename = f'./portfolios/results/initial_rebalance_{ticker_name}_{portfolio_size}stocks.csv'
 
     save_portfolio(portfolio, filename=filename)
 
@@ -117,45 +120,42 @@ def main():
     build_dataset_from_tickers(bvsp_index_ticker)
     build_dataset_from_tickers(sp100_index_ticker)
 
-    # train(bvsp_index_ticker, portfolio_size=10)
-    # train(sp100_index_ticker, portfolio_size=10)
+    train(bvsp_index_ticker, portfolio_size=10, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=10, time_limit=30)
 
-    # train(bvsp_index_ticker, portfolio_size=20)
-    # train(sp100_index_ticker, portfolio_size=20)
+    train(bvsp_index_ticker, portfolio_size=20, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=20, time_limit=30)
 
-    # train(bvsp_index_ticker, portfolio_size=10, initial_solution=True)
-    # train(sp100_index_ticker, portfolio_size=10, initial_solution=True)
+    train(bvsp_index_ticker, portfolio_size=30, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=30, time_limit=30)
 
-    # train(bvsp_index_ticker, portfolio_size=20, initial_solution=True)
-    # train(sp100_index_ticker, portfolio_size=20, initial_solution=True)
+    train(bvsp_index_ticker, portfolio_size=10, initial_solution=True, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=10, initial_solution=True, time_limit=30)
 
-    # train(bvsp_index_ticker, portfolio_size=10, rebalance=True)
-    # train(sp100_index_ticker, portfolio_size=10, rebalance=True)
+    train(bvsp_index_ticker, portfolio_size=20, initial_solution=True, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=20, initial_solution=True, time_limit=30)
+    
+    train(bvsp_index_ticker, portfolio_size=30, initial_solution=True, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=30, initial_solution=True, time_limit=30)
 
-    # train(bvsp_index_ticker, portfolio_size=20, rebalance=True)
-    # train(sp100_index_ticker, portfolio_size=20, rebalance=True)
+    train(bvsp_index_ticker, portfolio_size=10, rebalance=True, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=10, rebalance=True, time_limit=30)
 
-    # train(bvsp_index_ticker, portfolio_size=10, initial_solution=True, rebalance=True)
-    # train(sp100_index_ticker, portfolio_size=10, initial_solution=True, rebalance=True)
+    train(bvsp_index_ticker, portfolio_size=20, rebalance=True, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=20, rebalance=True, time_limit=30)
+    
+    train(bvsp_index_ticker, portfolio_size=30, rebalance=True, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=30, rebalance=True, time_limit=30)
 
-    # train(bvsp_index_ticker, portfolio_size=20, initial_solution=True, rebalance=True)
-    # train(sp100_index_ticker, portfolio_size=20, initial_solution=True, rebalance=True)
+    train(bvsp_index_ticker, portfolio_size=10, initial_solution=True, rebalance=True, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=10, initial_solution=True, rebalance=True, time_limit=30)
 
-    train_to_define_k(bvsp_index_ticker, 5)
-    train_to_define_k(bvsp_index_ticker, 10)
-    train_to_define_k(bvsp_index_ticker, 15)
-    train_to_define_k(bvsp_index_ticker, 20)
-    train_to_define_k(bvsp_index_ticker, 25)
-    train_to_define_k(bvsp_index_ticker, 30)
-    train_to_define_k(bvsp_index_ticker, 35)
+    train(bvsp_index_ticker, portfolio_size=20, initial_solution=True, rebalance=True, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=20, initial_solution=True, rebalance=True, time_limit=30)
 
-    train_to_define_k(sp100_index_ticker, 5)
-    train_to_define_k(sp100_index_ticker, 10)
-    train_to_define_k(sp100_index_ticker, 15)
-    train_to_define_k(sp100_index_ticker, 20)
-    train_to_define_k(sp100_index_ticker, 25)
-    train_to_define_k(sp100_index_ticker, 30)
-    train_to_define_k(sp100_index_ticker, 35)
+    train(bvsp_index_ticker, portfolio_size=30, initial_solution=True, rebalance=True, time_limit=30)
+    train(sp100_index_ticker, portfolio_size=30, initial_solution=True, rebalance=True, time_limit=30)
+    
 
 
 if __name__ == "__main__":

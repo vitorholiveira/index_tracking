@@ -135,28 +135,29 @@ class IndexTracking:
             model.setAttr("Start", w, w_initial)
             model.setAttr("Start", z, z_initial)
 
-        model.setParam(GRB.Param.MIPGap, 0.01)  # Parar quando o gap for menor que 1%
-
         model.optimize()
 
         end = time.time()
 
-        error = model.ObjVal
-        weights = {i: w[i].x for i in I if z[i].x}
-        performance = self.compare_train_test_performance(weights)
-        optimization_time = end - start;
+        if model.Status == GRB.OPTIMAL or model.Status == GRB.TIME_LIMIT:
+            error = model.ObjVal
+            weights = {i: w[i].x for i in I if z[i].x}
+            performance = self.compare_train_test_performance(weights)
+            optimization_time = end - start
+            mip_gap = model.MIPGap
 
-        portfolio = {
-            'error': error,
-            'weights': weights,
-            'performance': performance,
-            'dates': self.dates,
-            'optimization_time': optimization_time
-        }
+            portfolio = {
+                'error': error,
+                'weights': weights,
+                'performance': performance,
+                'dates': self.dates,
+                'optimization_time': optimization_time,
+                "mip_gap": mip_gap
+            }
 
-        self.portfolio = portfolio
+            self.portfolio = portfolio
         
-        return portfolio
+        return self.portfolio
     
     def calculate_tracking_error(self, portfolio_weights, is_train=True):
         """
